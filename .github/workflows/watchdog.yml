@@ -7,6 +7,16 @@ name: Daily paper delivery watchdog
 
 on:
   workflow_dispatch:
+    inputs:
+      target_workflow:
+        description: "要触发的目标 workflow 文件名（日报=main.yml；只想验证 token 权限就填 keep-alive.yml，不会发邮件）"
+        required: false
+        default: "main.yml"
+      force:
+        description: "无视『今天已经跑过』强制触发（用于握手测试）"
+        type: boolean
+        required: false
+        default: false
   schedule:
     - cron: "20 8 * * *"
 
@@ -21,8 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET_REPO: qupika325-afk/zotero-arxiv-daily
-      WORKFLOW_FILE: main.yml
+      WORKFLOW_FILE: ${{ github.event.inputs.target_workflow || 'main.yml' }}
       TARGET_REF: main
+      FORCE: ${{ github.event.inputs.force || 'false' }}
       API: https://api.github.com
     steps:
       - name: Checkout
@@ -45,8 +56,10 @@ jobs:
           echo "$json" | jq -r '.workflow_runs[] | [.run_number, .event, .status, .conclusion // "-"] | @tsv'
           active=$(echo "$json" | jq '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress")] | length')
           ok=$(echo "$json" | jq '[.workflow_runs[] | select(.conclusion=="success")] | length')
-          echo "today=$today active=$active ok=$ok"
-          if [ "$active" -gt 0 ] || [ "$ok" -gt 0 ]; then
+          echo "today=$today active=$active ok=$ok force=$FORCE"
+          if [ "$FORCE" = "true" ]; then
+            echo "verdict=dispatch" >> "$GITHUB_OUTPUT"
+          elif [ "$active" -gt 0 ] || [ "$ok" -gt 0 ]; then
             echo "verdict=skip" >> "$GITHUB_OUTPUT"
           else
             echo "verdict=dispatch" >> "$GITHUB_OUTPUT"
