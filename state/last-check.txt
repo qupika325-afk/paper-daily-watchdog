@@ -1,1 +1,1 @@
-2026-11-03 06:23:23 UTC verdict=not-run target=qupika325-afk/zotero-arxiv-daily
+2026-11-03 06:41:00 UTC verdict=dispatch target=qupika325-afk/zotero-arxiv-daily
